@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TELLUS - Localizador de Instalações</title>
+    <style>
+        :root {
+            --brand-blue: #0056b3; /* Azul escuro TELLUS */
+            --brand-light-blue: #e6f0fa;
+            --white: #ffffff;
+            --gray: #f4f4f4;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--brand-light-blue);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--brand-blue);
+            width: 100%;
+            padding: 1.5rem 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--white);
+            margin: 0;
+            font-size: 2.2rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .main-container {
+            background-color: var(--white);
+            width: 90%;
+            max-width: 600px;
+            margin-top: -30px; /* Sobrepor levemente o header */
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .file-upload-section {
+            border: 2px dashed var(--brand-blue);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            background-color: #fcfcfc;
+        }
+
+        .file-upload-label {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--brand-blue);
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"] {
+            font-size: 0.9rem;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--brand-blue);
+            outline: none;
+        }
+
+        .result-card {
+            background-color: var(--white);
+            border-left: 6px solid var(--brand-blue);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            display: none; /* Escondido inicialmente */
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-row {
+            margin-bottom: 10px;
+            font-size: 1.05rem;
+        }
+
+        .result-label {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            width: 100px;
+        }
+
+        .btn-maps {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background-color: var(--brand-blue);
+            color: white;
+            text-decoration: none;
+            padding: 15px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 15px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .btn-maps:hover {
+            background-color: #003d80;
+            transform: translateY(-2px);
+        }
+
+        .status-msg {
+            text-align: center;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            color: #666;
+        }
+        
+        .status-success { color: green; }
+        .status-error { color: red; }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: var(--brand-blue);
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>TELLUS</h1>
+    <div class="subtitle">Sistema de Localização Geográfica</div>
+</header>
+
+<div class="main-container">
+    _redirects
+    <div class="file-upload-section">
+        <label class="file-upload-label" for="jsonFile">
+            📂 Carregar arquivo "tableConvert.com_8fw2b1.json" para ter TODAS as instalações
+        </label>
+        <input type="file" id="jsonFile" accept=".json">
+        <div id="fileStatus" class="status-msg">Usando dados de exemplo (carregue o arquivo para ver todos).</div>
+    </div>
+
+    <div class="search-box">
+        <label class="search-label" for="searchInput">Pesquisar Instalação:</label>
+        <input type="text" id="searchInput" placeholder="Digite o número da instalação..." onkeyup="buscarInstalacao()">
+    </div>
+
+    <div id="loading" class="loading">Buscando...</div>
+
+    <div id="resultArea" class="result-card">
+        <div class="result-row">
+            <span class="result-label">Instalação:</span>
+            <span id="resInstal"></span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">Nº Série:</span>
+            <span id="resSerie"></span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">Latitude:</span>
+            <span id="resLat"></span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">Longitude:</span>
+            <span id="resLon"></span>
+        </div>
+
+        <a id="linkMaps" href="#" target="_blank" class="btn-maps">
+            📍 Abrir no Google Maps
+        </a>
+    </div>
+
+    <div id="notFound" class="status-msg status-error" style="display:none;">
+        Nenhuma instalação encontrada com este número.
+    </div>
+</div>
+
+<script>
+    // Dados iniciais (Amostra do arquivo carregado)
+    // Quando você carregar o arquivo no botão acima, esta lista será substituída pela completa.
+    let instalacoes = [
+      { "Instal": "4700560", "Nº Serie": "1121058665", "Latitude localiz.geográfica": "-12.967805000000", "Longitude localiz.geográfica": "-38.433923333333" },
+      { "Instal": "4701186", "Nº Serie": "1011066845", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
+      { "Instal": "4701181", "Nº Serie": "1227277803", "Latitude localiz.geográfica": "-12.967845000000", "Longitude localiz.geográfica": "-38.433076666667" },
+      { "Instal": "4701184", "Nº Serie": "960423917", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
+      { "Instal": "4701183", "Nº Serie": "1233024828", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
+      { "Instal": "4701180", "Nº Serie": "1210054169", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
+      { "Instal": "4701178", "Nº Serie": "1213443085", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
+      { "Instal": "4701179", "Nº Serie": "20453141", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" }
+    ];
+
+    // Lógica para carregar o arquivo JSON do usuário
+    document.getElementById('jsonFile').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        const statusDiv = document.getElementById('fileStatus');
+        
+        statusDiv.innerText = "Lendo arquivo...";
+        
+        reader.onload = function(e) {
+            try {
+                const json = JSON.parse(e.target.result);
+                if (Array.isArray(json)) {
+                    instalacoes = json;
+                    statusDiv.innerText = `Sucesso! ${json.length} instalações carregadas.`;
+                    statusDiv.className = "status-msg status-success";
+                    buscarInstalacao(); // Refazer busca se já houver algo digitado
+                } else {
+                    throw new Error("Formato inválido");
+                }
+            } catch (error) {
+                statusDiv.innerText = "Erro ao ler o arquivo. Certifique-se de que é um JSON válido.";
+                statusDiv.className = "status-msg status-error";
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    function buscarInstalacao() {
+        const input = document.getElementById('searchInput').value.trim().toLowerCase();
+        const resultArea = document.getElementById('resultArea');
+        const notFound = document.getElementById('notFound');
+
+        if (input.length === 0) {
+            resultArea.style.display = 'none';
+            notFound.style.display = 'none';
+            return;
+        }
+
+        // Procura no Array (busca exata ou parcial pelo início)
+        // O arquivo JSON usa a chave "Instal"
+        const resultado = instalacoes.find(item => {
+            const instalVal = String(item["Instal"]).toLowerCase();
+            return instalVal.startsWith(input); 
+        });
+
+        if (resultado) {
+            resultArea.style.display = 'block';
+            notFound.style.display = 'none';
+            
+            // Preenche os dados
+            document.getElementById('resInstal').innerText = resultado["Instal"];
+            document.getElementById('resSerie').innerText = resultado["Nº Serie"] || "-";
+            
+            const lat = resultado["Latitude localiz.geográfica"];
+            const lon = resultado["Longitude localiz.geográfica"];
+            
+            document.getElementById('resLat').innerText = lat;
+            document.getElementById('resLon').innerText = lon;
+            
+            // Cria link do Google Maps
+            // Formato: https://www.google.com/maps/search/?api=1&query=lat,lon
+            const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+            document.getElementById('linkMaps').href = mapLink;
+
+        } else {
+            resultArea.style.display = 'none';
+            notFound.style.display = 'block';
+        }
+    }
+</script>
+
+</body>
+</html>
