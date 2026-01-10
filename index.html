@@ -182,7 +182,7 @@
 <div class="main-container">
     EQUIPE ITAPUÃ
     <div class="file-upload-section">
-        <label class="file-upload-label" for="htmlFile">
+        <label class="file-upload-label" for="txtFile">
             📂 Carregar arquivo "instalacao.txt" para ter TODAS as instalações
         </label>
         <input type="file" id="txtFile" accept=".txt">
@@ -239,7 +239,7 @@
     ];
 
     // Lógica para carregar o arquivo JSON do usuário
-    document.getElementById('jsonFile').addEventListener('change', function(event) {
+    document.getElementById('txtFile').addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -250,17 +250,17 @@
         
         reader.onload = function(e) {
             try {
-                const json = JSON.parse(e.target.result);
-                if (Array.isArray(json)) {
-                    instalacoes = json;
-                    statusDiv.innerText = `Sucesso! ${json.length} instalações carregadas.`;
+                const txt = txt.parse(e.target.result);
+                if (Array.isArray(txt)) {
+                    instalacoes = txt;
+                    statusDiv.innerText = `Sucesso! ${txt.length} instalações carregadas.`;
                     statusDiv.className = "status-msg status-success";
                     buscarInstalacao(); // Refazer busca se já houver algo digitado
                 } else {
                     throw new Error("Formato inválido");
                 }
             } catch (error) {
-                statusDiv.innerText = "Erro ao ler o arquivo. Certifique-se de que é um JSON válido.";
+                statusDiv.innerText = "Erro ao ler o arquivo. Certifique-se de que é um TXT válido.";
                 statusDiv.className = "status-msg status-error";
             }
         };
@@ -279,7 +279,7 @@
         }
 
         // Procura no Array (busca exata ou parcial pelo início)
-        // O arquivo JSON usa a chave "Instal"
+        // O arquivo TXT usa a chave "Instal"
         const resultado = instalacoes.find(item => {
             const instalVal = String(item["Instal"]).toLowerCase();
             return instalVal.startsWith(input); 
@@ -314,4 +314,5 @@
 </body>
 
 </html>
+
 
