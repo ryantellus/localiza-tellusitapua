@@ -6,10 +6,9 @@
     <title>TELLUS - Localizador de Instalações</title>
     <style>
         :root {
-            --brand-blue: #0056b3; /* Azul escuro TELLUS */
+            --brand-blue: #0056b3;
             --brand-light-blue: #e6f0fa;
             --white: #ffffff;
-            --gray: #f4f4f4;
             --text-color: #333;
         }
 
@@ -51,7 +50,7 @@
             background-color: var(--white);
             width: 90%;
             max-width: 600px;
-            margin-top: -30px; /* Sobrepor levemente o header */
+            margin-top: -30px;
             padding: 2rem;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.15);
@@ -73,10 +72,6 @@
             margin-bottom: 10px;
             color: var(--brand-blue);
             font-weight: bold;
-            font-size: 0.9rem;
-        }
-
-        input[type="file"] {
             font-size: 0.9rem;
         }
 
@@ -112,7 +107,7 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-            display: none; /* Escondido inicialmente */
+            display: none;
             animation: fadeIn 0.4s ease;
         }
 
@@ -130,7 +125,7 @@
             font-weight: bold;
             color: #555;
             display: inline-block;
-            width: 100px;
+            width: 110px;
         }
 
         .btn-maps {
@@ -158,18 +153,11 @@
             font-size: 0.9rem;
             margin-top: 10px;
             color: #666;
+            word-break: break-all;
         }
         
         .status-success { color: green; }
         .status-error { color: red; }
-
-        .loading {
-            display: none;
-            text-align: center;
-            color: var(--brand-blue);
-            font-weight: bold;
-        }
-
     </style>
 </head>
 <body>
@@ -180,21 +168,19 @@
 </header>
 
 <div class="main-container">
-    EQUIPE ITAPUÃ
+    
     <div class="file-upload-section">
         <label class="file-upload-label" for="txtFile">
-            📂 Carregar arquivo "instalacao.txt" para ter TODAS as instalações
+            📂 Carregar arquivo (.txt)
         </label>
-        <input type="file" id="txtFile" accept=".txt">
-        <div id="fileStatus" class="status-msg">Usando dados de exemplo (carregue o arquivo para ver todos).</div>
+        <input type="file" id="txtFile" accept=".txt, .csv, .json">
+        <div id="fileStatus" class="status-msg">Aguardando arquivo...</div>
     </div>
 
     <div class="search-box">
-        <label class="search-label" for="searchInput">Pesquisar Instalação:</label>
-        <input type="text" id="searchInput" placeholder="Digite o número da instalação..." onkeyup="buscarInstalacao()">
+        <label class="search-label" for="searchInput">Pesquisar Instalação ou Série:</label>
+        <input type="text" id="searchInput" placeholder="Digite o número..." onkeyup="buscarInstalacao()">
     </div>
-
-    <div id="loading" class="loading">Buscando...</div>
 
     <div id="resultArea" class="result-card">
         <div class="result-row">
@@ -220,25 +206,14 @@
     </div>
 
     <div id="notFound" class="status-msg status-error" style="display:none;">
-        Nenhuma instalação encontrada com este número.
+        Instalação não encontrada.
     </div>
 </div>
 
 <script>
-    // Dados iniciais (Amostra do arquivo carregado)
-    // Quando você carregar o arquivo no botão acima, esta lista será substituída pela completa.
-    let instalacoes = [
-      { "Instal": "4700560", "Nº Serie": "1121058665", "Latitude localiz.geográfica": "-12.967805000000", "Longitude localiz.geográfica": "-38.433923333333" },
-      { "Instal": "4701186", "Nº Serie": "1011066845", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
-      { "Instal": "4701181", "Nº Serie": "1227277803", "Latitude localiz.geográfica": "-12.967845000000", "Longitude localiz.geográfica": "-38.433076666667" },
-      { "Instal": "4701184", "Nº Serie": "960423917", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
-      { "Instal": "4701183", "Nº Serie": "1233024828", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
-      { "Instal": "4701180", "Nº Serie": "1210054169", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
-      { "Instal": "4701178", "Nº Serie": "1213443085", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" },
-      { "Instal": "4701179", "Nº Serie": "20453141", "Latitude localiz.geográfica": "-12.967895000000", "Longitude localiz.geográfica": "-38.433683333333" }
-    ];
+    let instalacoes = [];
 
-    // Lógica para carregar o arquivo JSON do usuário
+    // Função para carregar o arquivo TXT
     document.getElementById('txtFile').addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -249,23 +224,75 @@
         statusDiv.innerText = "Lendo arquivo...";
         
         reader.onload = function(e) {
+            const conteudo = e.target.result;
+
             try {
-                const txt = txt.parse(e.target.result);
-                if (Array.isArray(txt)) {
-                    instalacoes = txt;
-                    statusDiv.innerText = `Sucesso! ${txt.length} instalações carregadas.`;
-                    statusDiv.className = "status-msg status-success";
-                    buscarInstalacao(); // Refazer busca se já houver algo digitado
+                // TENTATIVA 1: Tentar ler como JSON direto (caso o txt contenha JSON)
+                const json = JSON.parse(conteudo);
+                if (Array.isArray(json)) {
+                    instalacoes = json;
+                    finalizarCarregamento(statusDiv, json.length);
+                    return;
+                }
+            } catch (err) {
+                // Se falhar, não é JSON. Vamos para a Tentativa 2.
+                console.log("Não é JSON válido, tentando CSV...");
+            }
+
+            try {
+                // TENTATIVA 2: Ler como CSV/Texto Tabulado
+                // Assume que a primeira linha é o cabeçalho
+                const dadosConvertidos = parseCSV(conteudo);
+                if (dadosConvertidos && dadosConvertidos.length > 0) {
+                    instalacoes = dadosConvertidos;
+                    finalizarCarregamento(statusDiv, dadosConvertidos.length);
                 } else {
-                    throw new Error("Formato inválido");
+                    throw new Error("Formato não reconhecido");
                 }
             } catch (error) {
-                statusDiv.innerText = "Erro ao ler o arquivo. Certifique-se de que é um TXT válido.";
+                statusDiv.innerText = "Erro: O arquivo TXT não está em um formato reconhecido (JSON ou CSV).";
                 statusDiv.className = "status-msg status-error";
             }
         };
         reader.readAsText(file);
     });
+
+    function finalizarCarregamento(element, qtd) {
+        element.innerText = `Sucesso! ${qtd} instalações carregadas do TXT.`;
+        element.className = "status-msg status-success";
+        buscarInstalacao(); 
+    }
+
+    // Função auxiliar para converter CSV/Texto em Objetos
+    function parseCSV(text) {
+        // Divide por linhas
+        const linhas = text.trim().split(/\r?\n/);
+        if (linhas.length < 2) return null;
+
+        // Pega cabeçalhos da primeira linha (sep. por virgula, ponto-virgula ou tab)
+        // Remove aspas se houver
+        const headers = linhas[0].split(/[;,	]/).map(h => h.replace(/['"]+/g, '').trim());
+        
+        const resultado = [];
+
+        for (let i = 1; i < linhas.length; i++) {
+            const linhaAtual = linhas[i];
+            if (!linhaAtual.trim()) continue; // Pula linhas vazias
+
+            // Tenta separar igual ao cabeçalho
+            // Nota: Isso é um parser simples, pode falhar se houver virgulas DENTRO dos valores
+            const valores = linhaAtual.split(/[;,	]/).map(v => v.replace(/['"]+/g, '').trim());
+            
+            if (valores.length === headers.length) {
+                let obj = {};
+                headers.forEach((header, index) => {
+                    obj[header] = valores[index];
+                });
+                resultado.push(obj);
+            }
+        }
+        return resultado;
+    }
 
     function buscarInstalacao() {
         const input = document.getElementById('searchInput').value.trim().toLowerCase();
@@ -278,30 +305,32 @@
             return;
         }
 
-        // Procura no Array (busca exata ou parcial pelo início)
-        // O arquivo TXT usa a chave "Instal"
+        // Busca Inteligente: Instalação ou Série
         const resultado = instalacoes.find(item => {
-            const instalVal = String(item["Instal"]).toLowerCase();
-            return instalVal.startsWith(input); 
+            // Adaptação para chaves que podem variar no TXT
+            // Tenta pegar "Instal" ou "Instalação" ou a primeira coluna
+            const instalVal = String(item["Instal"] || item["Instalação"] || Object.values(item)[0] || "").toLowerCase();
+            const serieVal = String(item["Nº Serie"] || item["Serie"] || "").toLowerCase();
+            
+            return instalVal.startsWith(input) || serieVal.startsWith(input);
         });
 
         if (resultado) {
             resultArea.style.display = 'block';
             notFound.style.display = 'none';
             
-            // Preenche os dados
-            document.getElementById('resInstal').innerText = resultado["Instal"];
-            document.getElementById('resSerie').innerText = resultado["Nº Serie"] || "-";
+            // Tenta encontrar as chaves corretas dinamicamente
+            const valInstal = resultado["Instal"] || resultado["Instalação"] || Object.values(resultado)[0];
+            const valSerie = resultado["Nº Serie"] || resultado["Serie"] || "-";
+            const valLat = resultado["Latitude localiz.geográfica"] || resultado["Latitude"] || resultado["Lat"];
+            const valLon = resultado["Longitude localiz.geográfica"] || resultado["Longitude"] || resultado["Lon"];
+
+            document.getElementById('resInstal').innerText = valInstal;
+            document.getElementById('resSerie').innerText = valSerie;
+            document.getElementById('resLat').innerText = valLat;
+            document.getElementById('resLon').innerText = valLon;
             
-            const lat = resultado["Latitude localiz.geográfica"];
-            const lon = resultado["Longitude localiz.geográfica"];
-            
-            document.getElementById('resLat').innerText = lat;
-            document.getElementById('resLon').innerText = lon;
-            
-            // Cria link do Google Maps
-            // Formato: https://www.google.com/maps/search/?api=1&query=lat,lon
-            const mapLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`;
+            const mapLink = `https://www.google.com/maps/search/?api=1&query=${valLat},${valLon}`;
             document.getElementById('linkMaps').href = mapLink;
 
         } else {
@@ -312,7 +341,6 @@
 </script>
 
 </body>
-
 </html>
 
 
