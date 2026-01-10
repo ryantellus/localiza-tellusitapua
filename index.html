@@ -75,6 +75,13 @@
             font-size: 0.9rem;
         }
 
+        .example-text {
+            font-size: 0.75rem;
+            color: #777;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
         .search-box {
             position: relative;
         }
@@ -171,15 +178,16 @@
     
     <div class="file-upload-section">
         <label class="file-upload-label" for="txtFile">
-            📂 Carregar arquivo (.txt)
+            📂 Carregar Base de Dados (.txt ou .json)
         </label>
         <input type="file" id="txtFile" accept=".txt, .csv, .json">
+        <div class="example-text">O arquivo .txt deve ter cabeçalho na 1ª linha (ex: Instal;Latitude;Longitude)</div>
         <div id="fileStatus" class="status-msg">Aguardando arquivo...</div>
     </div>
 
     <div class="search-box">
-        <label class="search-label" for="searchInput">Pesquisar Instalação ou Série:</label>
-        <input type="text" id="searchInput" placeholder="Digite o número..." onkeyup="buscarInstalacao()">
+        <label class="search-label" for="searchInput">Pesquisar:</label>
+        <input type="text" id="searchInput" placeholder="Digite Nº Instalação ou Série..." onkeyup="buscarInstalacao()">
     </div>
 
     <div id="resultArea" class="result-card">
@@ -213,7 +221,7 @@
 <script>
     let instalacoes = [];
 
-    // Função para carregar o arquivo TXT
+    // Função principal de leitura do arquivo
     document.getElementById('txtFile').addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -221,13 +229,14 @@
         const reader = new FileReader();
         const statusDiv = document.getElementById('fileStatus');
         
-        statusDiv.innerText = "Lendo arquivo...";
+        statusDiv.innerText = "Processando arquivo...";
+        statusDiv.className = "status-msg";
         
         reader.onload = function(e) {
             const conteudo = e.target.result;
 
             try {
-                // TENTATIVA 1: Tentar ler como JSON direto (caso o txt contenha JSON)
+                // 1. Tenta ler como JSON
                 const json = JSON.parse(conteudo);
                 if (Array.isArray(json)) {
                     instalacoes = json;
@@ -235,58 +244,62 @@
                     return;
                 }
             } catch (err) {
-                // Se falhar, não é JSON. Vamos para a Tentativa 2.
-                console.log("Não é JSON válido, tentando CSV...");
+                // Ignora erro de JSON e segue para TXT
             }
 
             try {
-                // TENTATIVA 2: Ler como CSV/Texto Tabulado
-                // Assume que a primeira linha é o cabeçalho
-                const dadosConvertidos = parseCSV(conteudo);
+                // 2. Tenta ler como TXT / CSV
+                const dadosConvertidos = parseTXT(conteudo);
                 if (dadosConvertidos && dadosConvertidos.length > 0) {
                     instalacoes = dadosConvertidos;
                     finalizarCarregamento(statusDiv, dadosConvertidos.length);
                 } else {
-                    throw new Error("Formato não reconhecido");
+                    throw new Error("Formato inválido ou vazio");
                 }
             } catch (error) {
-                statusDiv.innerText = "Erro: O arquivo TXT não está em um formato reconhecido (JSON ou CSV).";
+                statusDiv.innerText = "Erro: Não foi possível ler os dados. Verifique se o TXT tem cabeçalho.";
                 statusDiv.className = "status-msg status-error";
+                console.error(error);
             }
         };
         reader.readAsText(file);
     });
 
     function finalizarCarregamento(element, qtd) {
-        element.innerText = `Sucesso! ${qtd} instalações carregadas do TXT.`;
+        element.innerText = `Sucesso! ${qtd} instalações carregadas.`;
         element.className = "status-msg status-success";
+        // Se o usuário já tinha digitado algo, refaz a busca com os novos dados
         buscarInstalacao(); 
     }
 
-    // Função auxiliar para converter CSV/Texto em Objetos
-    function parseCSV(text) {
-        // Divide por linhas
+    // Função inteligente para ler TXT (CSV, Tabulado ou Ponto e Vírgula)
+    function parseTXT(text) {
         const linhas = text.trim().split(/\r?\n/);
         if (linhas.length < 2) return null;
 
-        // Pega cabeçalhos da primeira linha (sep. por virgula, ponto-virgula ou tab)
-        // Remove aspas se houver
-        const headers = linhas[0].split(/[;,	]/).map(h => h.replace(/['"]+/g, '').trim());
+        // Detecta o separador usando a primeira linha (cabeçalho)
+        const primeiraLinha = linhas[0];
+        let separador = ',';
+        if (primeiraLinha.includes(';')) separador = ';';
+        else if (primeiraLinha.includes('\t')) separador = '\t';
+
+        // Limpa aspas do cabeçalho
+        const headers = primeiraLinha.split(separador).map(h => h.replace(/['"]+/g, '').trim());
         
         const resultado = [];
 
         for (let i = 1; i < linhas.length; i++) {
             const linhaAtual = linhas[i];
-            if (!linhaAtual.trim()) continue; // Pula linhas vazias
+            if (!linhaAtual.trim()) continue;
 
-            // Tenta separar igual ao cabeçalho
-            // Nota: Isso é um parser simples, pode falhar se houver virgulas DENTRO dos valores
-            const valores = linhaAtual.split(/[;,	]/).map(v => v.replace(/['"]+/g, '').trim());
+            const valores = linhaAtual.split(separador).map(v => v.replace(/['"]+/g, '').trim());
             
-            if (valores.length === headers.length) {
+            // Cria o objeto apenas se tiver o mesmo número de colunas (ou próximo)
+            if (valores.length > 0) {
                 let obj = {};
                 headers.forEach((header, index) => {
-                    obj[header] = valores[index];
+                    // Proteção caso a linha tenha menos colunas que o cabeçalho
+                    obj[header] = valores[index] || "";
                 });
                 resultado.push(obj);
             }
@@ -305,33 +318,56 @@
             return;
         }
 
-        // Busca Inteligente: Instalação ou Série
+        // Busca Flexível
         const resultado = instalacoes.find(item => {
-            // Adaptação para chaves que podem variar no TXT
-            // Tenta pegar "Instal" ou "Instalação" ou a primeira coluna
-            const instalVal = String(item["Instal"] || item["Instalação"] || Object.values(item)[0] || "").toLowerCase();
-            const serieVal = String(item["Nº Serie"] || item["Serie"] || "").toLowerCase();
+            // Normaliza as chaves para minúsculo para encontrar "Instal" ou "instal" ou "Instalação"
+            const keys = Object.keys(item);
             
-            return instalVal.startsWith(input) || serieVal.startsWith(input);
+            // Tenta achar o valor da instalação
+            const keyInstal = keys.find(k => k.toLowerCase().includes("instal"));
+            const valInstal = keyInstal ? String(item[keyInstal]) : "";
+
+            // Tenta achar o número de série
+            const keySerie = keys.find(k => k.toLowerCase().includes("serie") || k.toLowerCase().includes("série"));
+            const valSerie = keySerie ? String(item[keySerie]) : "";
+            
+            return valInstal.toLowerCase().startsWith(input) || valSerie.toLowerCase().startsWith(input);
         });
 
         if (resultado) {
             resultArea.style.display = 'block';
             notFound.style.display = 'none';
             
-            // Tenta encontrar as chaves corretas dinamicamente
-            const valInstal = resultado["Instal"] || resultado["Instalação"] || Object.values(resultado)[0];
-            const valSerie = resultado["Nº Serie"] || resultado["Serie"] || "-";
-            const valLat = resultado["Latitude localiz.geográfica"] || resultado["Latitude"] || resultado["Lat"];
-            const valLon = resultado["Longitude localiz.geográfica"] || resultado["Longitude"] || resultado["Lon"];
+            // Mapeamento dinâmico de colunas para exibição
+            const keys = Object.keys(resultado);
+            
+            const keyInstal = keys.find(k => k.toLowerCase().includes("instal")) || keys[0];
+            const keySerie = keys.find(k => k.toLowerCase().includes("serie") || k.toLowerCase().includes("série"));
+            const keyLat = keys.find(k => k.toLowerCase().includes("latitud") || k.toLowerCase() === "lat");
+            const keyLon = keys.find(k => k.toLowerCase().includes("longitud") || k.toLowerCase() === "lon" || k.toLowerCase() === "lng");
 
-            document.getElementById('resInstal').innerText = valInstal;
-            document.getElementById('resSerie').innerText = valSerie;
+            const valLatRaw = keyLat ? resultado[keyLat] : "";
+            const valLonRaw = keyLon ? resultado[keyLon] : "";
+
+            // Formata coordenadas (Troca vírgula por ponto para o Google Maps funcionar)
+            const valLat = valLatRaw.replace(',', '.');
+            const valLon = valLonRaw.replace(',', '.');
+
+            document.getElementById('resInstal').innerText = resultado[keyInstal] || "-";
+            document.getElementById('resSerie').innerText = keySerie ? resultado[keySerie] : "-";
             document.getElementById('resLat').innerText = valLat;
             document.getElementById('resLon').innerText = valLon;
             
-            const mapLink = `https://www.google.com/maps/search/?api=1&query=${valLat},${valLon}`;
-            document.getElementById('linkMaps').href = mapLink;
+            // Gera o link do Google Maps
+            if(valLat && valLon) {
+                const mapLink = `https://www.google.com/maps?q=${valLat},${valLon}`;
+                const btnMaps = document.getElementById('linkMaps');
+                btnMaps.href = mapLink;
+                btnMaps.style.display = 'block';
+                btnMaps.innerText = "📍 Abrir no Google Maps";
+            } else {
+                document.getElementById('linkMaps').style.display = 'none';
+            }
 
         } else {
             resultArea.style.display = 'none';
@@ -342,5 +378,3 @@
 
 </body>
 </html>
-
-
