@@ -183,7 +183,11 @@
         <input type="file" id="txtFile" accept=".txt, .csv, .json">
         <div class="example-text">SELECIONE O ARQUIVO ENVIADO NO WHATSAPP</div>
         <div id="fileStatus" class="status-msg">Aguardando arquivo...</div>
+    <div class="search-box">
+        <label class="search-label" for="searchInput">Pesquisar:</label>
+        <input type="text" id="searchInput" placeholder="Digite Nº Instalação ou Série..." onkeyup="buscarInstalacao()">
     </div>
+ </div>
    <a href="instalacao.txt" download="instalacao.txt" style="
    background-color: #007BFF;
    color: white;
@@ -196,11 +200,6 @@
    cursor: pointer;">
    📥 Baixar Arquivo TXT
 </a>
-    <div class="search-box">
-        <label class="search-label" for="searchInput">Pesquisar:</label>
-        <input type="text" id="searchInput" placeholder="Digite Nº Instalação ou Série..." onkeyup="buscarInstalacao()">
-    </div>
-
     <div id="resultArea" class="result-card">
         <div class="result-row">
             <span class="result-label">Instalação:</span>
@@ -389,6 +388,7 @@
 
 </body>
 </html>
+
 
 
 
